@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单管理系统</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <style type="text/tailwindcss">
+        @theme {
+            --color-primary: #3b82f6;
+            --color-secondary: #10b981;
+            --color-danger: #ef4444;
+            --color-warning: #f59e0b;
+            --font-inter: 'Inter', sans-serif;
+        }
+        
+        @utility smooth-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        @utility card-shadow {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        
+        @utility card-shadow-hover {
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        
+        body {
+            font-family: var(--font-inter);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- 页面标题 -->
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">订单管理系统</h1>
+            <p class="text-gray-600">轻松管理你的所有订单</p>
+        </header>
+        
+        <!-- 操作按钮 -->
+        <div class="flex justify-end mb-6">
+            <button id="addOrderBtn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg smooth-transition flex items-center">
+                <i class="fas fa-plus mr-2"></i> 添加新订单
+            </button>
+        </div>
+        
+        <!-- 订单状态筛选 -->
+        <div class="bg-white rounded-lg p-4 mb-6 card-shadow">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">订单状态筛选</h2>
+            <div class="flex flex-wrap gap-3">
+                <button class="status-filter-btn bg-primary text-white px-4 py-2 rounded-lg smooth-transition" data-status="all">
+                    全部订单
+                </button>
+                <button class="status-filter-btn bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg smooth-transition" data-status="未完成">
+                    未完成
+                </button>
+                <button class="status-filter-btn bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg smooth-transition" data-status="完成">
+                    已完成
+                </button>
+            </div>
+        </div>
+        
+        <!-- 订单列表 -->
+        <div id="ordersContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 订单卡片将通过JavaScript动态生成 -->
+            <div class="text-center py-12 text-gray-500" id="emptyOrdersMsg">
+                <i class="fas fa-box-open text-5xl mb-4"></i>
+                <p>暂无订单数据</p>
+                <p class="text-sm mt-2">点击"添加新订单"按钮开始管理你的订单</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加订单模态框 -->
+    <div id="addOrderModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg w-full max-w-md p-6 card-shadow">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">添加新订单</h3>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700 smooth-transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="addOrderForm" class="space-y-4">
+                <div>
+                    <label for="orderName" class="block text-sm font-medium text-gray-700 mb-1">订单名称</label>
+                    <input type="text" id="orderName" name="orderName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary smooth-transition" required>
+                </div>
+                <div>
+                    <label for="orderDetails" class="block text-sm font-medium text-gray-700 mb-1">订单详情</label>
+                    <textarea id="orderDetails" name="orderDetails" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary smooth-transition" placeholder="输入订单详细信息..."></textarea>
+                </div>
+                <div>
+                    <label for="orderStatus" class="block text-sm font-medium text-gray-700 mb-1">订单状态</label>
+                    <select id="orderStatus" name="orderStatus" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary smooth-transition" required>
+                        <option value="未完成">未完成</option>
+                        <option value="完成">已完成</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancelAddOrderBtn" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 smooth-transition">
+                        取消
+                    </button>
+                    <button type="submit" class="bg-primary hover:bg-primary/90 text-white font-medium px-6 py-2 rounded-lg smooth-transition">
+                        保存订单
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 删除确认模态框 -->
+    <div id="deleteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg w-full max-w-md p-6 card-shadow">
+            <div class="text-center mb-6">
+                <i class="fas fa-exclamation-triangle text-4xl text-warning mb-4"></i>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">确认删除订单</h3>
+                <p class="text-gray-600" id="deleteOrderName">你确定要删除这个订单吗？此操作不可撤销。</p>
+            </div>
+            <div class="flex justify-center space-x-3">
+                <button id="cancelDeleteBtn" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 smooth-transition">
+                    取消
+                </button>
+                <button id="confirmDeleteBtn" class="bg-danger hover:bg-danger/90 text-white font-medium px-6 py-2 rounded-lg smooth-transition">
+                    确认删除
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentOrderIdForDelete = null;
+        
+        // DOM元素
+        const addOrderBtn = document.getElementById('addOrderBtn');
+        const addOrderModal = document.getElementById('addOrderModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const cancelAddOrderBtn = document.getElementById('cancelAddOrderBtn');
+        const addOrderForm = document.getElementById('addOrderForm');
+        const deleteModal = document.getElementById('deleteModal');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const deleteOrderName = document.getElementById('deleteOrderName');
+        const statusFilterBtns = document.querySelectorAll('.status-filter-btn');
+        const ordersContainer = document.getElementById('ordersContainer');
+        const emptyOrdersMsg = document.getElementById('emptyOrdersMsg');
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始加载订单数据
+            fetchOrders('all');
+            
+            // 绑定事件监听器
+            addOrderBtn.addEventListener('click', openAddOrderModal);
+            closeModalBtn.addEventListener('click', closeAddOrderModal);
+            cancelAddOrderBtn.addEventListener('click', closeAddOrderModal);
+            addOrderForm.addEventListener('submit', handleAddOrder);
+            cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+            confirmDeleteBtn.addEventListener('click', handleDeleteOrder);
+            
+            // 绑定状态筛选按钮事件
+            statusFilterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // 更新按钮样式
+                    statusFilterBtns.forEach(b => {
+                        b.classList.remove('bg-primary', 'text-white');
+                        b.classList.add('bg-gray-200', 'hover:bg-gray-300');
+                    });
+                    btn.classList.remove('bg-gray-200', 'hover:bg-gray-300');
+                    btn.classList.add('bg-primary', 'text-white');
+                    
+                    // 筛选订单
+                    const status = btn.dataset.status;
+                    fetchOrders(status);
+                });
+            });
+        });
+        
+        // 打开添加订单模态框
+        function openAddOrderModal() {
+            // 重置表单
+            addOrderForm.reset();
+            addOrderModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 关闭添加订单模态框
+        function closeAddOrderModal() {
+            addOrderModal.classList.add('hidden');
+            document.body.style.overflow = ''; // 恢复背景滚动
+        }
+        
+        // 打开删除确认模态框
+        function openDeleteModal(orderId, orderName) {
+            currentOrderIdForDelete = orderId;
+            deleteOrderName.textContent = `你确定要删除"${orderName}"这个订单吗？此操作不可撤销。`;
+            deleteModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 关闭删除确认模态框
+        function closeDeleteModal() {
+            deleteModal.classList.add('hidden');
+            document.body.style.overflow = ''; // 恢复背景滚动
+        }
+        
+        // 处理添加订单
+        function handleAddOrder(e) {
+            e.preventDefault();
+            
+            const orderName = document.getElementById('orderName').value;
+            const orderDetails = document.getElementById('orderDetails').value;
+            const orderStatus = document.getElementById('orderStatus').value;
+            
+            // 创建订单数据
+            const orderData = {
+                orderName,
+                orderDetails,
+                orderStatus
+            };
+            
+            // 发送API请求添加订单
+            fetch(`${API_BASE_URL}/api/orders`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('添加订单失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 关闭模态框
+                closeAddOrderModal();
+                // 刷新订单列表
+                const currentStatus = document.querySelector('.status-filter-btn.bg-primary').dataset.status;
+                fetchOrders(currentStatus);
+                // 显示成功提示
+                showNotification('订单添加成功', 'success');
+            })
+            .catch(error => {
+                console.error('添加订单出错: ', error);
+                showNotification('添加订单失败，请重试', 'error');
+            });
+        }
+        
+                // 处理删除订单
+        function handleDeleteOrder() {
+            if (!currentOrderIdForDelete) {
+                closeDeleteModal();
+                return;
+            }
+            
+            // 发送API请求删除订单
+            fetch(`${API_BASE_URL}/api/orders/${currentOrderIdForDelete}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('删除订单失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 关闭模态框
+                closeDeleteModal();
+                // 刷新订单列表
+                const currentStatus = document.querySelector('.status-filter-btn.bg-primary').dataset.status;
+                fetchOrders(currentStatus);
+                // 显示成功提示
+                showNotification('订单删除成功', 'success');
+            })
+            .catch(error => {
+                console.error('删除订单出错: ', error);
+                showNotification('删除订单失败，请重试', 'error');
+            });
+        }
+        
+        // 获取订单数据
+        function fetchOrders(status) {
+            let url = 'http://localhost:3001/api/orders';
+            
+            // 如果有状态筛选，添加查询参数
+            if (status !== 'all') {
+                url += `?status=${status}`;
+            }
+            
+            fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('获取订单数据失败');
+                }
+                return response.json();
+            })
+            .then(orders => {
+                renderOrders(orders, status);
+            })
+            .catch(error => {
+                console.error('获取订单数据出错: ', error);
+                showNotification('获取订单数据失败，请重试', 'error');
+            });
+        }
+        
+        // 渲染订单列表
+        function renderOrders(orders, currentStatus) {
+            if (orders.length === 0) {
+                ordersContainer.innerHTML = `
+                    <div class="text-center py-12 text-gray-500" id="emptyOrdersMsg">
+                        <i class="fas fa-box-open text-5xl mb-4"></i>
+                        <p>暂无${currentStatus === 'all' ? '' : currentStatus + ' '}订单数据</p>
+                        <p class="text-sm mt-2">点击"添加新订单"按钮开始管理你的订单</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 隐藏空订单提示
+            emptyOrdersMsg.classList.add('hidden');
+            
+            // 生成订单卡片HTML
+            let ordersHTML = '';
+            orders.forEach(order => {
+                const statusClass = order.order_status === '完成' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                const statusText = order.order_status === '完成' ? '已完成' : '未完成';
+                const statusIcon = order.order_status === '完成' ? 'check-circle' : 'clock';
+                const toggleStatusClass = order.order_status === '完成' ? 'bg-gray-200 text-gray-700' : 'bg-primary text-white';
+                const toggleStatusText = order.order_status === '完成' ? '标记为未完成' : '标记为已完成';
+                
+                ordersHTML += `
+                    <div class="bg-white rounded-lg overflow-hidden card-shadow hover:card-shadow-hover smooth-transition">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <h3 class="text-xl font-bold text-gray-800">${order.order_name}</h3>
+                                <span class="px-3 py-1 rounded-full text-sm font-medium ${statusClass}">
+                                    <i class="fas fa-${statusIcon} mr-1"></i> ${statusText}
+                                </span>
+                            </div>
+                            <p class="text-gray-600 mb-4">${order.order_details || '暂无详细信息'}</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-500">
+                                    <i class="far fa-calendar-alt mr-1"></i> ${formatDate(order.create_time)}
+                                </span>
+                                <div class="flex space-x-2">
+                                    <button class="toggle-status-btn px-3 py-1 rounded-lg text-sm font-medium ${toggleStatusClass} smooth-transition" data-id="${order.id}">
+                                        ${toggleStatusText}
+                                    </button>
+                                    <button class="delete-order-btn text-danger hover:bg-danger/10 px-3 py-1 rounded-lg text-sm font-medium smooth-transition" data-id="${order.id}" data-name="${order.order_name}">
+                                        <i class="fas fa-trash-alt mr-1"></i> 删除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // 更新订单列表
+            ordersContainer.innerHTML = ordersHTML;
+            
+            // 绑定状态切换按钮事件
+            document.querySelectorAll('.toggle-status-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const orderId = this.dataset.id;
+                    const newStatus = this.textContent.includes('已完成') ? '未完成' : '完成';
+                    
+                    // 发送API请求更新订单状态
+                    fetch(`http://localhost:3001/api/orders/${orderId}/status`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ orderStatus: newStatus })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('更新订单状态失败');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // 刷新订单列表
+                        const currentStatus = document.querySelector('.status-filter-btn.bg-primary').dataset.status;
+                        fetchOrders(currentStatus);
+                        // 显示成功提示
+                        showNotification(`订单已标记为${newStatus}`, 'success');
+                    })
+                    .catch(error => {
+                        console.error('更新订单状态出错: ', error);
+                        showNotification('更新订单状态失败，请重试', 'error');
+                    });
+                });
+            });
+            
+            // 绑定删除按钮事件
+            document.querySelectorAll('.delete-order-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const orderId = this.dataset.id;
+                    const orderName = this.dataset.name;
+                    openDeleteModal(orderId, orderName);
+                });
+            });
+        }
+        
+        // 格式化日期
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // 显示通知
+        function showNotification(message, type) {
+            // 创建通知元素
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 smooth-transition ${
+                type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            // 添加到页面
+            document.body.appendChild(notification);
+            
+            // 3秒后自动关闭
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateY(20px)';
+                notification.style.transition = 'all 0.3s ease-out';
+                
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
